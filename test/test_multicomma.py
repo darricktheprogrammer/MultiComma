@@ -18,6 +18,11 @@ class TestSingleLine:
 		result = add_comma_to_line(txt)
 		assert result == "sample text,]"
 
+	def test_AddCommaToLine_CommaBeforeBracketExists_ReturnsOriginalString(self):
+		txt = "sample text,]"
+		result = add_comma_to_line(txt)
+		assert result == "sample text,]"
+
 	def test_AddCommaToLine_EndsWithCurlyBracket_AppendsBeforeBracket(self):
 		txt = "sample text}"
 		result = add_comma_to_line(txt)
