@@ -5,6 +5,8 @@ A longer description...
 """
 
 import sublime_plugin
+from sublime import Region
+
 from .manipulations import add_comma_to_line_multi
 
 
@@ -20,36 +22,35 @@ class MultiCommaCommand(sublime_plugin.TextCommand):
 		return self.LINE_ENDINGS[self.view.line_endings().lower()]
 
 	def run(self, edit, **args):
-		new_regions = []
-		for region in self.view.sel():
-			print("original: {}, {}".format(region.begin() ,region.end()))
-			expanded_region = self.view.line(region)
-			txt = self.view.substr(expanded_region)
-			with_comma = add_comma_to_line_multi(txt, self._line_endings())
-			self.view.replace(edit, expanded_region, with_comma)
-			# self.view.sel().subtract(expanded_region)
-			# if self._line_endings() in txt:
-			# if region.a != region.b:
-			if region.empty():
-				# single cursor point. Revert ST moving it to the right.
-				# new_cursor_pos = self.view.text_point(region.begin(), region.end())
-				# new_regions.append(new_cursor_pos)
-				self.view.sel().subtract(region)
-				region.a += 1
-				region.b += 1
-				# new_regions.append(region)
+		for i, region in enumerate(self.view.sel()):
+			full_line_region = self.view.line(region)
+			txt = self.view.substr(full_line_region)
+			if txt.endswith(","):
+				continue
+			is_reverse_selection = region.a > region.b
+			begin = region.a if not is_reverse_selection else region.b
 
-				print("updated: {}, {}".format(region.begin(), region.end()))
-				# self.view.sel().add(target)
-				# self.view.run_command("move", {"by": "characters", "forward": False})
-			else:
+			with_comma = add_comma_to_line_multi(txt, self._line_endings())
+			self.view.replace(edit, full_line_region, with_comma)
+
+			# Update the region after adding text, otherwise the selections
+			# don't go back in the right place.
+			edited_region = self.view.sel()[i]
+			end = (
+				edited_region.b
+				if not is_reverse_selection
+				else edited_region.a
+			)
+
+			self.view.sel().subtract(self.view.sel()[i])
+			self.view.sel().subtract(full_line_region)
+			self.view.sel().subtract(region)
+
+			if region.empty():
 				self.view.sel().add(region)
-				# if region.b > region.a:
-				# 	region.b = expanded_region.b
-				# else:
-				# 	region.a = expanded_region.a
-				# new_regions.append(region)
-			print("expanded: {}, {}".format(expanded_region.begin(), expanded_region.end()))
-			print()
-		# self.view.sel().clear()
-		# self.view.sel().add_all(new_regions)
+			elif is_reverse_selection:
+				new_region = Region(end - 1, begin)
+				self.view.sel().add(new_region)
+			else:
+				new_region = Region(begin, end - 1)
+				self.view.sel().add(new_region)
